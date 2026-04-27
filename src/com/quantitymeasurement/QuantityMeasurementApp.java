@@ -2,54 +2,49 @@ package quantitymeasurement;
 
 import java.util.Objects;
 
-// UC8: Refactoring Unit Enum to Standalone with Conversion Responsibility
+// UC9 : Weight Measurement Equality, Conversion and Addition
 public class QuantityMeasurementApp {
 
     public static void main(String[] args) {
 
-        QuantityLength q1 = new QuantityLength(1.0, LengthUnit.FEET);
-        QuantityLength q2 = new QuantityLength(12.0, LengthUnit.INCHES);
-        QuantityLength q3 = new QuantityLength(1.0, LengthUnit.YARDS);
-        QuantityLength q4 = new QuantityLength(2.54, LengthUnit.CENTIMETERS);
+        // WEIGHT DEMO
+        QuantityWeight w1 = new QuantityWeight(1.0, WeightUnit.KILOGRAM);
+        QuantityWeight w2 = new QuantityWeight(1000.0, WeightUnit.GRAM);
+        QuantityWeight w3 = new QuantityWeight(2.20462, WeightUnit.POUND);
 
-        // Convert
-        System.out.println("1 FEET to INCHES = " + q1.convertTo(LengthUnit.INCHES));
+        System.out.println("1 KG == 1000 G ? " + w1.equals(w2));
+        System.out.println("1 KG == 2.20462 LB ? " + w1.equals(w3));
 
-        // Equality
-        System.out.println("12 INCHES == 1 FEET ? " + q2.equals(q1));
-        System.out.println("36 INCHES == 1 YARD ? " +
-                new QuantityLength(36, LengthUnit.INCHES).equals(q3));
+        System.out.println("1 KG to GRAM = " + w1.convertTo(WeightUnit.GRAM));
+        System.out.println("500 G to POUND = " +
+                new QuantityWeight(500, WeightUnit.GRAM).convertTo(WeightUnit.POUND));
 
-        // Add with same unit
-        System.out.println("1 FEET + 12 INCHES = " +
-                q1.add(q2, LengthUnit.FEET));
+        System.out.println("1 KG + 1000 G = " + w1.add(w2));
+        System.out.println("1 KG + 1000 G in GRAM = " +
+                w1.add(w2, WeightUnit.GRAM));
 
-        // Add with target unit
-        System.out.println("1 FEET + 12 INCHES in YARDS = " +
-                q1.add(q2, LengthUnit.YARDS));
-
-        // CM conversion
-        System.out.println("2.54 CM to INCHES = " +
-                q4.convertTo(LengthUnit.INCHES));
+        System.out.println("2 KG + 4 LB in KG = " +
+                new QuantityWeight(2, WeightUnit.KILOGRAM)
+                        .add(new QuantityWeight(4, WeightUnit.POUND),
+                                WeightUnit.KILOGRAM));
     }
 }
 
-// Standalone Enum
-enum LengthUnit {
+// ================= WEIGHT UNIT =================
+enum WeightUnit {
 
-    FEET(1.0),
-    INCHES(1.0 / 12.0),
-    YARDS(3.0),
-    CENTIMETERS(1.0 / 30.48);
+    KILOGRAM(1.0),
+    GRAM(0.001),
+    POUND(0.453592);
 
     private final double factor;
 
-    LengthUnit(double factor) {
+    WeightUnit(double factor) {
         this.factor = factor;
     }
 
     public double convertToBaseUnit(double value) {
-        return value * factor;   // base = FEET
+        return value * factor; // base = KG
     }
 
     public double convertFromBaseUnit(double baseValue) {
@@ -61,14 +56,14 @@ enum LengthUnit {
     }
 }
 
-// Quantity Class
-class QuantityLength {
+// ================= QUANTITY WEIGHT =================
+class QuantityWeight {
 
     private final double value;
-    private final LengthUnit unit;
+    private final WeightUnit unit;
     private static final double EPSILON = 0.0001;
 
-    public QuantityLength(double value, LengthUnit unit) {
+    public QuantityWeight(double value, WeightUnit unit) {
         if (unit == null || Double.isNaN(value) || Double.isInfinite(value)) {
             throw new IllegalArgumentException("Invalid input");
         }
@@ -76,13 +71,19 @@ class QuantityLength {
         this.unit = unit;
     }
 
-    public QuantityLength convertTo(LengthUnit targetUnit) {
+    public QuantityWeight convertTo(WeightUnit targetUnit) {
         double base = unit.convertToBaseUnit(value);
-        double converted = targetUnit.convertFromBaseUnit(base);
-        return new QuantityLength(round(converted), targetUnit);
+        double result = targetUnit.convertFromBaseUnit(base);
+        return new QuantityWeight(round(result), targetUnit);
     }
 
-    public QuantityLength add(QuantityLength other, LengthUnit targetUnit) {
+    // default result in first operand unit
+    public QuantityWeight add(QuantityWeight other) {
+        return add(other, this.unit);
+    }
+
+    // explicit target unit
+    public QuantityWeight add(QuantityWeight other, WeightUnit targetUnit) {
         if (other == null || targetUnit == null) {
             throw new IllegalArgumentException("Invalid input");
         }
@@ -90,18 +91,19 @@ class QuantityLength {
         double base1 = unit.convertToBaseUnit(this.value);
         double base2 = other.unit.convertToBaseUnit(other.value);
 
-        double sumBase = base1 + base2;
-        double result = targetUnit.convertFromBaseUnit(sumBase);
+        double sum = base1 + base2;
+        double result = targetUnit.convertFromBaseUnit(sum);
 
-        return new QuantityLength(round(result), targetUnit);
+        return new QuantityWeight(round(result), targetUnit);
     }
 
     @Override
     public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (!(obj instanceof QuantityLength)) return false;
 
-        QuantityLength other = (QuantityLength) obj;
+        if (this == obj) return true;
+        if (obj == null || getClass() != obj.getClass()) return false;
+
+        QuantityWeight other = (QuantityWeight) obj;
 
         double base1 = unit.convertToBaseUnit(this.value);
         double base2 = other.unit.convertToBaseUnit(other.value);
